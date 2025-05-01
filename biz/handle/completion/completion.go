@@ -18,3 +18,9 @@ func Completion(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request)
 
 	return lsp.CompletionList{}, nil
 }
+
+const (
+	lowScore  float64 = 0.01
+	stdScore  float64 = 1.0
+	highScore float64 = 100.0
+)

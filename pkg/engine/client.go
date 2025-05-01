@@ -19,14 +19,14 @@ type Client struct {
 	route  map[string]RouteFunc
 }
 
-type Config struct {
-	Port int
-}
-
 func NewClient(r map[string]RouteFunc) *Client {
 	return &Client{
 		route: r,
 	}
+}
+
+func (c *Client) SetConfig(cfg Config) {
+	c.Config = cfg
 }
 
 func (c *Client) Start() {
@@ -45,7 +45,7 @@ func (c *Client) Start() {
 		}
 	})
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", c.Config.Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", c.Config.ServerPort))
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -81,7 +81,7 @@ func (c *Client) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 
 func (c *Client) registerContext(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, "client", c)
-	ctx = context.WithValue(ctx, "port", c.Config.Port)
+	ctx = context.WithValue(ctx, "port", c.Config.ServerPort)
 	return ctx
 }
 
