@@ -5,59 +5,59 @@ import (
 )
 
 type PrefixCache[T any] struct {
-	sep   string
-	cache Cache[T]
+	Sep   string   `json:"Sep"`
+	Cache Cache[T] `json:"Cache"`
 }
 
 type Cache[T any] struct {
-	data  []T
-	child map[string]Cache[T]
+	Data  []T                 `json:"Data"`
+	Child map[string]Cache[T] `json:"Child"`
 }
 
 func (c *PrefixCache[T]) WithValue(key string, value T) {
-	c.cache = setCacheValue(c.cache, strings.Split(key, c.sep), value)
+	c.Cache = setCacheValue(c.Cache, strings.Split(key, c.Sep), value)
 }
 
 func (c *PrefixCache[T]) Value(key string) []T {
-	return getCacheValue(c.cache, strings.Split(key, c.sep))
+	return getCacheValue(c.Cache, strings.Split(key, c.Sep))
 }
 
 func NewPrefixCase[T any](sep string) PrefixCache[T] {
 	return PrefixCache[T]{
-		sep:   sep,
-		cache: Cache[T]{},
+		Sep:   sep,
+		Cache: Cache[T]{},
 	}
 }
 
 func setCacheValue[T any](cache Cache[T], path []string, value T) Cache[T] {
 	if len(path) == 0 {
-		if cache.data == nil {
-			cache.data = []T{}
+		if cache.Data == nil {
+			cache.Data = []T{}
 		}
-		cache.data = append(cache.data, value)
+		cache.Data = append(cache.Data, value)
 		return cache
 	}
 
 	part := path[0]
-	if cache.child == nil {
-		cache.child = make(map[string]Cache[T])
+	if cache.Child == nil {
+		cache.Child = make(map[string]Cache[T])
 	}
-	subCache, exists := cache.child[part]
+	subCache, exists := cache.Child[part]
 	if !exists {
 		subCache = Cache[T]{}
 	}
 	subCache = setCacheValue(subCache, path[1:], value)
-	cache.child[part] = subCache
+	cache.Child[part] = subCache
 	return cache
 }
 
 func getCacheValue[T any](cache Cache[T], path []string) []T {
 	if len(path) == 0 {
-		return cache.data
+		return cache.Data
 	}
 
 	part := path[0]
-	subCache, exists := cache.child[part]
+	subCache, exists := cache.Child[part]
 	if !exists {
 		return nil
 	}

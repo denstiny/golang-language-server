@@ -15,3 +15,14 @@ func TestPrefixCase(t *testing.T) {
 		t.Errorf("expect \"hello world\", got %s", c[0])
 	}
 }
+
+func TestPrefixCacheNullKey(t *testing.T) {
+	cache := NewPrefixCase[string]("/")
+	cache.WithValue("", "hello world")
+	b, _ := json.MarshalIndent(cache, "", "  ")
+	t.Log(string(b))
+	c := cache.Value("")
+	if c[0] != "hello world" {
+		t.Errorf("expect \"hello world\", got %s", c[0])
+	}
+}
