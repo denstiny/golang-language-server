@@ -1,0 +1,11 @@
+package file
+package mypackage
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}
