@@ -6,3 +6,5 @@ import (
 
 // 设置lsp.Server默认功能全部关闭
 var ServerCapabilities = lsp.ServerCapabilities{}
+
+const CacheFileName = "go_lsp_cahce"
