@@ -49,6 +49,7 @@ type Index struct {
 	JoinLine   int       `db:"join_line" json:"join_line" gorm:"type:int"`
 	JoinCol    int       `db:"join_col" json:"join_col" gorm:"type:"`
 	PackageID  int32     `db:"package_id" json:"package_id" gorm:"type:int index:idx_package_id"`
+	Extra      string    `db:"extra" json:"extra" gorm:"type:text"`
 	UpdateTime time.Time `db:"update_time" json:"update_time" gorm:"type:datetime"`
 }
 

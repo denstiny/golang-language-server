@@ -1,11 +1,28 @@
 package file
-package mypackage
 
 import (
     "fmt"
     "os"
+    "go/token"
 )
 
+var Test string
+
+type c string
+
+
+type Scope struct {
+	Start token.Pos
+	End   token.Pos
+}
+
+type CSGO struct {
+	Name string
+	Duan int32
+}
+
 func main() {
-    fmt.Println("Hello, World!")
+    a := 10
+    var cs CS
+    fmt.Println("Hello, World!",a)
 }
