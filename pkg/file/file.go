@@ -1,6 +1,9 @@
 package file
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 func Exists(path string) bool {
 	_, err := os.Stat(path)
@@ -23,4 +26,8 @@ func IsDir(path string) bool {
 
 func Open(path string) (*os.File, error) {
 	return os.Open(path)
+}
+
+func ReadAll(f *os.File) ([]byte, error) {
+	return io.ReadAll(f)
 }
