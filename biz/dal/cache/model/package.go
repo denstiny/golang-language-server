@@ -1,6 +1,9 @@
 package model
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 const PackageTableName = "packages"
 const IndexTableName = "indexes"
@@ -36,16 +39,17 @@ Index 结构体代表了索引的相关信息，它会存储在数据库里，�
   - JoinCol: 索引所在的列号，精确到文件中的列位置，在数据库中对应 "join_col" 字段，JSON 序列化时键名为 "join_col"。
 */
 type Index struct {
-	ID         int    `db:"id" json:"id" gorm:"primary_key"`
-	Comparable string `db:"comparable" json:"comparable" gorm:"type:text"`
-	KeyWorld   string `db:"key_world" json:"key_world" gorm:"type:varchar(1024)index:idx_key_world"`
-	Type       int32  `db:"type" json:"type" gorm:"type:int:index:idx_type"`
-	JoinIndex  string `db:"join_index" json:"join_index"`
-	FilePath   string `db:"file_path" json:"file_path" gorm:"type:varchar(2048)index:idx_file_path"`
-	Package    string `db:"package" json:"package" gorm:"type:varchar(1024)index:idx_package"`
-	JoinLine   int    `db:"join_line" json:"join_line" gorm:"type:int"`
-	JoinCol    int    `db:"join_col" json:"join_col" gorm:"type:"`
-	PackageID  int32  `db:"package_id" json:"package_id" gorm:"type:int index:idx_package_id"`
+	ID         int       `db:"id" json:"id" gorm:"primary_key"`
+	Comparable string    `db:"comparable" json:"comparable" gorm:"type:text"`
+	KeyWorld   string    `db:"key_world" json:"key_world" gorm:"type:varchar(1024)index:idx_key_world"`
+	Type       int32     `db:"type" json:"type" gorm:"type:int:index:idx_type"`
+	JoinIndex  string    `db:"join_index" json:"join_index"`
+	FilePath   string    `db:"file_path" json:"file_path" gorm:"type:varchar(2048)index:idx_file_path"`
+	Package    string    `db:"package" json:"package" gorm:"type:varchar(1024)index:idx_package"`
+	JoinLine   int       `db:"join_line" json:"join_line" gorm:"type:int"`
+	JoinCol    int       `db:"join_col" json:"join_col" gorm:"type:"`
+	PackageID  int32     `db:"package_id" json:"package_id" gorm:"type:int index:idx_package_id"`
+	UpdateTime time.Time `db:"update_time" json:"update_time" gorm:"type:datetime"`
 }
 
 func (p *Package) IndexName() string {
