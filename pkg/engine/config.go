@@ -1,10 +1,10 @@
 package engine
 
-import "github.com/sourcegraph/go-lsp"
+import "pkg.nimblebun.works/go-lsp"
 
 type Config struct {
 	ServerPort      int
-	ProjectRoot     string
+	WorkFolds       []string
 	ServerConfigDir string
 	Trace           bool
 	ClientInfo      lsp.ClientInfo

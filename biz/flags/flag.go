@@ -3,6 +3,7 @@ package flags
 import (
 	"flag"
 	"fmt"
+	"github.com/denstiny/golang-language-server/biz/conts"
 	"os"
 )
 
@@ -13,9 +14,6 @@ var (
 	SERVICE_STDIO      bool
 	SERVICE_TCP        bool
 	SERVICE_PROT       int
-
-	VERSION      = "0.0.1"
-	SERVICE_NAME = "golang-language-server"
 )
 
 func init() {
@@ -30,9 +28,9 @@ func init() {
 
 func Help() {
 	fmt.Fprintln(os.Stderr, "This is a Go language server service. You can use the following flags to configure it:\n")
-	fmt.Fprintf(os.Stderr, "Usage of %s Version:%s\n", SERVICE_NAME, VERSION)
+	fmt.Fprintf(os.Stderr, "Usage of %s Version:%s\n", conts.SERVICE_NAME, conts.VERSION)
 	fmt.Fprintln(os.Stderr, "Available flags:")
 	flag.PrintDefaults()
 	fmt.Fprintln(os.Stderr, "Examples:")
-	fmt.Fprintf(os.Stderr, "  %s -port 8080 -config_dir /path/to/config -debug\n", SERVICE_NAME)
+	fmt.Fprintf(os.Stderr, "  %s -port 8080 -config_dir /path/to/config -debug\n", conts.SERVICE_NAME)
 }
