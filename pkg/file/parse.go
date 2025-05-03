@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -16,9 +17,11 @@ type GoFile struct {
 	*ast.File
 	Variables      map[string]map[string]TypeInfoSpec
 	Functions      map[string]map[string]FuncSpec
+	Blocks         map[string]map[string]BlockSpec
 	Types          map[string]map[string]TypeSpec
 	Imports        map[string]ImportSpec
 	buffer         map[Position]byte
+	scopeIsParse   map[Scope]struct{} //保存已经解析过的范围
 	loadBufferDone context.Context
 }
 
@@ -37,11 +40,12 @@ type Position struct {
 
 func ParseGoFile(file *os.File) (*GoFile, error) {
 	var gof = GoFile{
-		Variables: make(map[string]map[string]TypeInfoSpec),
-		Functions: make(map[string]map[string]FuncSpec),
-		Types:     make(map[string]map[string]TypeSpec),
-		Imports:   make(map[string]ImportSpec),
-		buffer:    make(map[Position]byte),
+		Variables:    make(map[string]map[string]TypeInfoSpec),
+		Functions:    make(map[string]map[string]FuncSpec),
+		Types:        make(map[string]map[string]TypeSpec),
+		Imports:      make(map[string]ImportSpec),
+		buffer:       make(map[Position]byte),
+		scopeIsParse: make(map[Scope]struct{}),
 	}
 
 	fest := token.NewFileSet()
@@ -74,6 +78,7 @@ func ParseGoFile(file *os.File) (*GoFile, error) {
 	}
 	gof.File = astFile
 	gof.parse(context.Background(), gof.File)
+	gof.scopeIsParse = nil
 	return &gof, nil
 }
 
@@ -84,12 +89,20 @@ func (g *GoFile) parse(ctx context.Context, file *ast.File) {
 	})
 }
 
-func (g *GoFile) parseHandle(ctx context.Context, n ast.Node) {
-	println("parseHandle")
-	if n == nil {
+func (g *GoFile) parseHandle(ctx context.Context, node ast.Node) {
+	log.Info().Msg("parseHandle")
+	if node == nil {
 		return
 	}
-	ast.Inspect(n, func(n ast.Node) bool {
+
+	ast.Inspect(node, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		if g.InParse(n.Pos(), n.End()) {
+			return true
+		}
+
 		switch x := n.(type) {
 		case *ast.FuncDecl:
 			g.funcDeclHandle(ctx, x)
@@ -99,13 +112,45 @@ func (g *GoFile) parseHandle(ctx context.Context, n ast.Node) {
 			g.assignDeclStmtHandle(ctx, x)
 		case *ast.TypeSpec:
 			g.typeDeclHandle(ctx, x)
+		case *ast.FuncLit:
+			g.funcLitHandle(ctx, x)
+		case *ast.BlockStmt:
+			g.blockDeclHandle(ctx, x)
+		default:
+			return true
 		}
 		return true
 	})
 }
 
+func (g *GoFile) InParse(start, end token.Pos) bool {
+	_, ok := g.scopeIsParse[Scope{Start: start, End: end}]
+	return ok
+}
+
+func (g *GoFile) registerParse(start, end token.Pos) {
+	g.scopeIsParse[Scope{Start: start, End: end}] = struct{}{}
+}
+
+func (g *GoFile) funcLitHandle(ctx context.Context, n *ast.FuncLit) {
+	g.registerParse(n.Pos(), n.End())
+	log.Info().Msg("funcLitHandle")
+	ctx = withBlockName(ctx, BlockSpecTypeLambda.String())
+	g.parseHandle(ctx, n.Body)
+}
+
+func (g *GoFile) blockDeclHandle(ctx context.Context, block *ast.BlockStmt) {
+	g.registerParse(block.Pos(), block.End())
+	log.Info().Msg("blockDeclHandle")
+	ctx = withBlockName(ctx, BlockSpecTypeBlock.String())
+	for _, stmt := range block.List {
+		g.parseHandle(ctx, stmt)
+	}
+}
+
 func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
-	println("typeDeclHandle")
+	g.registerParse(x.Pos(), x.End())
+	log.Info().Msg("typeDeclHandle")
 	fields := []TypeInfoSpec{}
 	if structType, ok := x.Type.(*ast.StructType); ok {
 		for _, field := range structType.Fields.List {
@@ -129,36 +174,34 @@ func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
 	})
 }
 
+func (g *GoFile) parseFieldList(ctx context.Context, fields *ast.FieldList) []TypeInfoSpec {
+	var fieldlist []TypeInfoSpec
+	for _, param := range fields.List {
+		for _, ident := range param.Names {
+			fieldlist = append(fieldlist, TypeInfoSpec{
+				Name:    &ident.Name,
+				Scope:   Scope{ident.Pos(), ident.End()},
+				Type:    ident.Obj.Kind.String(),
+				Comment: "",
+			})
+		}
+	}
+	return fieldlist
+}
+
 func (g *GoFile) funcDeclHandle(ctx context.Context, n *ast.FuncDecl) {
-	println("funcDeclHandle", n.Name.Name)
-	ctx = context.WithValue(ctx, BlockName, n.Name.Name)
+	g.registerParse(n.Pos(), n.End())
+	log.Info().Msg(fmt.Sprintf("funcDeclHandle: %v", n.Name.Name))
+	ctx = withBlockName(ctx, n.Name.Name)
 	params := []TypeInfoSpec{}
 	returns := []TypeInfoSpec{}
 
 	if n.Type.Params != nil {
-		for _, param := range n.Type.Params.List {
-			for _, ident := range param.Names {
-				params = append(params, TypeInfoSpec{
-					Name:    &ident.Name,
-					Scope:   Scope{ident.Pos(), ident.End()},
-					Type:    ident.Obj.Kind.String(),
-					Comment: "",
-				})
-			}
-		}
+		params = g.parseFieldList(ctx, n.Type.Params)
 	}
 
 	if n.Type.Results != nil {
-		for _, parm := range n.Type.Results.List {
-			for _, ident := range parm.Names {
-				returns = append(returns, TypeInfoSpec{
-					Name:    &ident.Name,
-					Scope:   Scope{ident.Pos(), ident.End()},
-					Type:    getTypeString(ident),
-					Comment: "",
-				})
-			}
-		}
+		returns = g.parseFieldList(ctx, n.Type.Results)
 	}
 	g.withFunction(ctx, FuncSpec{
 		Name:    n.Name.Name,
@@ -172,7 +215,8 @@ func (g *GoFile) funcDeclHandle(ctx context.Context, n *ast.FuncDecl) {
 }
 
 func (g *GoFile) assignDeclStmtHandle(ctx context.Context, stmt *ast.AssignStmt) {
-	println("assignDeclStmtHandle")
+	g.registerParse(stmt.Pos(), stmt.End())
+	log.Info().Msg("assignDeclStmtHandle")
 	if stmt.Tok != token.DEFINE {
 		return
 	}
@@ -192,7 +236,8 @@ func (g *GoFile) assignDeclStmtHandle(ctx context.Context, stmt *ast.AssignStmt)
 }
 
 func (g *GoFile) genDeclHandle(ctx context.Context, x *ast.GenDecl) {
-	println("genDeclHandle")
+	g.registerParse(x.Pos(), x.End())
+	log.Info().Msg("genDeclHandle")
 	if x.Tok == token.VAR || x.Tok == token.CONST {
 		for _, spec := range x.Specs {
 			if vspec, ok := spec.(*ast.ValueSpec); ok {
@@ -243,10 +288,16 @@ func (g *GoFile) withVariable(ctx context.Context, n TypeInfoSpec) {
 const BlockName = "block-name"
 
 func getBlockName(ctx context.Context) string {
-	if v, ok := ctx.Value(BlockName).(string); ok {
-		return v
+	if v := ctx.Value(BlockName); v != nil {
+		return v.(string)
 	}
 	return "global"
+}
+
+const blockNameJoinSep = "/"
+
+func withBlockName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, BlockName, getBlockName(ctx)+blockNameJoinSep+name)
 }
 
 // dest: global|funcName name: keyword

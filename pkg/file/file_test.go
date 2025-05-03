@@ -55,7 +55,7 @@ func main() {
     var b, c string
     d := 10
     // 此处存在语法错误，缺少右括号
-    fmt.Println("Hello, World!
+    fmt.log.Info().Msg("Hello, World!
 }
 `
 	file, err := parser.ParseFile(fset, "", code, parser.AllErrors)

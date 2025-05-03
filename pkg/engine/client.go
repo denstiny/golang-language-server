@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/denstiny/golang-language-server/biz/flags"
-	"log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"net"
+	"os"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -40,19 +42,19 @@ func (c *LspService) StdioStart(ctx context.Context) {
 
 func (c *LspService) TcpStart(ctx context.Context) {
 	h := jsonrpc2.HandlerWithError(func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
-		log.Println("rpc msg:", req.Method)
+		log.Info().Msg("rpc msg:" + req.Method)
 		ctx = c.registerContext(ctx)
 		ctx = context.WithValue(ctx, rpc_conn, conn)
 		result, err := c.Handle(ctx, conn, req)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Msg(err.Error())
 		}
 		return result, err
 	})
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", c.Config.ServerPort))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 		return
 	}
 	defer listener.Close()
@@ -60,7 +62,7 @@ func (c *LspService) TcpStart(ctx context.Context) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return
 		}
 
@@ -101,4 +103,10 @@ func GetRpcConn(ctx context.Context) *jsonrpc2.Conn {
 		}
 	}
 	return nil
+}
+
+func init() {
+	// 设置彩色输出
+	output := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: false}
+	log.Logger = log.Output(output).Level(zerolog.DebugLevel)
 }

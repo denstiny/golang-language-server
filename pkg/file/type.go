@@ -14,6 +14,32 @@ type TypeInfoSpec struct {
 	Comment string
 }
 
+type BlockSpec struct {
+	Name  *string       // 如果有函数名称则使用函数名称
+	Type  BlockSpecType // 函数块，匿名函数块，普通块
+	Scope Scope
+}
+
+type BlockSpecType int
+
+const (
+	BlockSpecTypeFunc   BlockSpecType = 0
+	BlockSpecTypeLambda BlockSpecType = 1
+	BlockSpecTypeBlock  BlockSpecType = 2
+)
+
+func (t BlockSpecType) String() string {
+	switch t {
+	case BlockSpecTypeFunc:
+		return "func"
+	case BlockSpecTypeLambda:
+		return "lambda"
+	case BlockSpecTypeBlock:
+		return "block"
+	}
+	return "unknown"
+}
+
 type FuncSpec struct {
 	Name    string
 	Params  []TypeInfoSpec
