@@ -9,7 +9,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	f, err := Open("/Users/bytedance/denstiny/golang-language-server/pkg/file/testgofile.gox")
+	f, err := Open("/Users/bytedance/denstiny/golang-language-server/pkg/file/testgofile.txt")
 	if err != nil {
 		t.Error(err)
 		return
@@ -64,4 +64,7 @@ func main() {
 	}
 	variables := findVariableDefinitions(file)
 	fmt.Println("定义的变量有:", variables)
+}
+
+func TestParseGoFile2(t *testing.T) {
 }

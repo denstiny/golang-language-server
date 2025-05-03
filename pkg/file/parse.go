@@ -14,10 +14,25 @@ import (
 type GoFile struct {
 	FileInfo os.FileInfo
 	*ast.File
-	Variables map[string]map[string]TypeInfoSpec
-	Functions map[string]map[string]FuncSpec
-	Types     map[string]map[string]TypeSpec
-	Imports   map[string]ImportSpec
+	Variables      map[string]map[string]TypeInfoSpec
+	Functions      map[string]map[string]FuncSpec
+	Types          map[string]map[string]TypeSpec
+	Imports        map[string]ImportSpec
+	buffer         map[Position]byte
+	loadBufferDone context.Context
+}
+
+func (goFile *GoFile) GetByteByPosition(position Position) (byte, error) {
+	if b, ok := goFile.buffer[position]; ok {
+		return b, nil
+	}
+	return byte(0), fmt.Errorf("no byte found for position %v", position)
+}
+
+type Position struct {
+	Filename string
+	Line     int
+	Column   int
 }
 
 func ParseGoFile(file *os.File) (*GoFile, error) {
@@ -26,6 +41,7 @@ func ParseGoFile(file *os.File) (*GoFile, error) {
 		Functions: make(map[string]map[string]FuncSpec),
 		Types:     make(map[string]map[string]TypeSpec),
 		Imports:   make(map[string]ImportSpec),
+		buffer:    make(map[Position]byte),
 	}
 
 	fest := token.NewFileSet()
@@ -33,6 +49,21 @@ func ParseGoFile(file *os.File) (*GoFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	loadBufferDoneCtx, cancel := context.WithCancel(context.Background())
+	gof.loadBufferDone = loadBufferDoneCtx
+	go func() {
+		x := 0
+		y := 0
+		for _, b := range code {
+			gof.buffer[Position{Filename: file.Name(), Line: y, Column: x}] = b
+			y++
+			if b == '\r' || b == '\n' {
+				x++
+				y = 0
+			}
+		}
+		cancel()
+	}()
 	gof.FileInfo, err = file.Stat()
 	if err != nil {
 		return nil, err
