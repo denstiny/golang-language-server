@@ -82,7 +82,7 @@ func ParseGoFile(file *os.File) (*GoFile, error) {
 			x = 0
 		}
 	}
-	gof.BlockType = make([]string, y)
+	gof.BlockType = make([]string, y+1)
 
 	gof.FileInfo, err = file.Stat()
 	if err != nil {
@@ -167,11 +167,10 @@ func (g *GoFile) blockDeclHandle(ctx context.Context, block *ast.BlockStmt) {
 }
 
 func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
-	g.registerParse(x.Pos(), x.End())
-	g.SetScopeDest(ctx, x.Pos(), x.End())
 	log.Info().Msg("typeDeclHandle")
 	fields := []TypeInfoSpec{}
 	if structType, ok := x.Type.(*ast.StructType); ok {
+		ctx = withBlockName(ctx, x.Name.Name)
 		for _, field := range structType.Fields.List {
 			for _, ident := range field.Names {
 				fieldInfo := TypeInfoSpec{
@@ -184,6 +183,8 @@ func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
 		}
 	}
 
+	g.registerParse(x.Pos(), x.End())
+	g.SetScopeDest(ctx, x.Pos(), x.End())
 	g.withTypeInfo(ctx, TypeSpec{
 		Name:    x.Name.Name,
 		Fields:  fields,
