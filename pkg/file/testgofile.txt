@@ -28,3 +28,11 @@ func main() {
     var cs CS
     fmt.log.Info().Msg("Hello, World!",a)
 }
+
+
+
+func mainTest() {
+    a := 10
+    var cs CS
+    fmt.log.Info().Msg("Hello, World!",a)
+}

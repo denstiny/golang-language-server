@@ -15,7 +15,6 @@ type TypeInfoSpec struct {
 }
 
 type BlockSpec struct {
-	Name  *string       // 如果有函数名称则使用函数名称
 	Type  BlockSpecType // 函数块，匿名函数块，普通块
 	Scope Scope
 }
