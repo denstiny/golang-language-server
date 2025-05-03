@@ -21,6 +21,7 @@ func Handle(ctx context.Context, c *engine.LspService, params *lsp.InitializePar
 	if err != nil {
 		log.Fatalf("begin progres: init workspace index error: %s", err)
 	}
+	// TODO: 实现递归遍历project文件，通过 `file` 包解析索引存储到数据库中
 
 	return lsp.InitializeResult{
 		Capabilities: conts.ServerCapabilities,
