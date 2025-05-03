@@ -1,9 +1,30 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"github.com/denstiny/golang-language-server/biz/handle/initialize"
+	"github.com/denstiny/golang-language-server/biz/handle/initialized"
 	"github.com/denstiny/golang-language-server/pkg/engine"
+	"github.com/sourcegraph/go-lsp"
+	"github.com/sourcegraph/jsonrpc2"
 )
 
 func Handles() map[string]engine.RouteFunc {
-	return map[string]engine.RouteFunc{}
+	return map[string]engine.RouteFunc{
+		"initialized": func(ctx context.Context, c *engine.LspService, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+			return nil, initialized.Handle(ctx)
+		},
+		"initialize": func(ctx context.Context, c *engine.LspService, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+			var param lsp.InitializeParams
+			err := json.Unmarshal(*req.Params, &param)
+			if err != nil {
+				return nil, err
+			}
+			return initialize.Handle(ctx, &param)
+		},
+		"shutdown": func(ctx context.Context, c *engine.LspService, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+			return nil, nil
+		},
+	}
 }
