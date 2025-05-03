@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	client := engine.NewClient(Handles())
+	client := engine.NewClient(RpcHandles())
 	client.SetConfig(engine.Config{
 		ServerPort:      flags.SERVICE_PROT,
 		ServerConfigDir: flags.SERVICE_CONFIG_DIR,

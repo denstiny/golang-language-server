@@ -2,11 +2,10 @@ package completion
 
 import (
 	"context"
-	"github.com/sourcegraph/go-lsp"
+	"pkg.nimblebun.works/go-lsp"
 )
 
-func Completion(ctx context.Context, params *lsp.CompletionParams) (interface{}, error) {
-
+func Handle(ctx context.Context, params *lsp.CompletionParams) (interface{}, error) {
 	return lsp.CompletionList{}, nil
 }
 

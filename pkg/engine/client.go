@@ -42,6 +42,7 @@ func (c *LspService) TcpStart(ctx context.Context) {
 	h := jsonrpc2.HandlerWithError(func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
 		log.Println("rpc msg:", req.Method)
 		ctx = c.registerContext(ctx)
+		ctx = context.WithValue(ctx, rpc_conn, conn)
 		result, err := c.Handle(ctx, conn, req)
 		if err != nil {
 			log.Fatal(err)
@@ -89,4 +90,15 @@ func (c *LspService) registerContext(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, "client", c)
 	ctx = context.WithValue(ctx, "port", c.Config.ServerPort)
 	return ctx
+}
+
+const rpc_conn = "rpc-client"
+
+func GetRpcConn(ctx context.Context) *jsonrpc2.Conn {
+	if v := ctx.Value(rpc_conn); v != nil {
+		if conn, ok := v.(*jsonrpc2.Conn); ok {
+			return conn
+		}
+	}
+	return nil
 }
