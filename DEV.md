@@ -1,6 +1,6 @@
 # golang-language-server
 
-> lsp/golsp.lua
+> nvim: lsp/golsp.lua
 ```lua
 local lspconfig = require("lspconfig.configs")
 lspconfig.golsp = {
