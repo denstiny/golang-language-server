@@ -13,9 +13,13 @@ var (
 )
 
 func init() {
-	db, err := gorm.Open(sqlite.Open(path.Join(flags.SERVICE_CONFIG_DIR, conts.CacheFileName)), &gorm.Config{})
+	dbpath := path.Join(flags.SERVICE_CONFIG_DIR, conts.CacheFileName)
+	db, err := gorm.Open(sqlite.Open(dbpath), &gorm.Config{
+		SkipDefaultTransaction: false,
+		PrepareStmt:            true,
+	})
 	if err != nil {
-		panic(err)
+		panic("failed to connect database")
 	}
 	DB = db
 }

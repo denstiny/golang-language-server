@@ -7,6 +7,8 @@ import (
 )
 
 var Test string
+var Test1 string
+var Test3 string
 
 type c string
 
@@ -24,5 +26,13 @@ type CSGO struct {
 func main() {
     a := 10
     var cs CS
-    fmt.Println("Hello, World!",a)
+    fmt.log.Info().Msg("Hello, World!",a)
+}
+
+
+
+func mainTest() {
+    a := 10
+    var cs CS
+    fmt.log.Info().Msg("Hello, World!",a)
 }

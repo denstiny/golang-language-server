@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -14,25 +15,108 @@ import (
 type GoFile struct {
 	FileInfo os.FileInfo
 	*ast.File
-	Variables map[string]map[string]TypeInfoSpec
-	Functions map[string]map[string]FuncSpec
-	Types     map[string]map[string]TypeSpec
-	Imports   map[string]ImportSpec
+	*token.FileSet
+	Variables    map[string]map[string]TypeInfoSpec
+	Functions    map[string]map[string]FuncSpec
+	Types        map[string]map[string]TypeSpec
+	Imports      map[string]ImportSpec
+	buffer       map[Position]byte
+	BlockType    []string
+	scopeIsParse map[Scope]struct{} //保存已经解析过的范围
+}
+
+func (g *GoFile) GetByteByPosition(position Position) (byte, error) {
+	if b, ok := g.buffer[position]; ok {
+		return b, nil
+	}
+	return byte(0), fmt.Errorf("no byte found for position %v", position)
+}
+
+func (g *GoFile) GetCursorNode(pos Position) ast.Node {
+	var respNode ast.Node
+	ast.Inspect(g, func(n ast.Node) bool {
+		startLine := g.Position(n.Pos())
+		endLine := g.Position(n.End())
+		// 说明还没找到
+		if pos.Line < startLine.Line {
+			return true
+		}
+
+		// 说明已经越过了最可能的的节点了
+		if pos.Line > endLine.Line {
+			return false
+		}
+		respNode = n
+		return true
+	})
+	return respNode
+}
+
+func (g *GoFile) SetScopeDest(ctx context.Context, start, end token.Pos) {
+	startLine := g.Position(start).Line
+	endLine := g.Position(end).Line
+	for i := startLine - 1; i < endLine; i++ {
+		g.BlockType[i] = getBlockName(ctx)
+	}
+}
+
+// 获取当前光标前的单词
+func (g *GoFile) GetCursorWord(pos Position) string {
+	var word []byte
+	for ; pos.Column >= 0; pos.Column-- {
+		b := g.buffer[pos]
+		if b == ' ' {
+			return string(word)
+		}
+		word = append(word, b)
+	}
+	return string(word)
+}
+
+// 返回当前块节点的名字
+func (g *GoFile) GetCursorBlock(position Position) string {
+	if position.Line < 0 || position.Line >= len(g.BlockType) || g.BlockType[position.Line] == "" {
+		return "global"
+	}
+	return g.BlockType[position.Line-1]
+}
+
+type Position struct {
+	Filename string
+	Line     int
+	Column   int
 }
 
 func ParseGoFile(file *os.File) (*GoFile, error) {
 	var gof = GoFile{
-		Variables: make(map[string]map[string]TypeInfoSpec),
-		Functions: make(map[string]map[string]FuncSpec),
-		Types:     make(map[string]map[string]TypeSpec),
-		Imports:   make(map[string]ImportSpec),
+		Variables:    make(map[string]map[string]TypeInfoSpec),
+		Functions:    make(map[string]map[string]FuncSpec),
+		Types:        make(map[string]map[string]TypeSpec),
+		Imports:      make(map[string]ImportSpec),
+		buffer:       make(map[Position]byte),
+		scopeIsParse: make(map[Scope]struct{}),
+		BlockType:    make([]string, 0),
 	}
 
 	fest := token.NewFileSet()
+	gof.FileSet = fest
 	code, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
+
+	x := 0
+	y := 0
+	for _, b := range code {
+		gof.buffer[Position{Filename: file.Name(), Line: y, Column: x}] = b
+		x++
+		if b == '\r' || b == '\n' {
+			y++
+			x = 0
+		}
+	}
+	gof.BlockType = make([]string, y+1)
+
 	gof.FileInfo, err = file.Stat()
 	if err != nil {
 		return nil, err
@@ -43,6 +127,7 @@ func ParseGoFile(file *os.File) (*GoFile, error) {
 	}
 	gof.File = astFile
 	gof.parse(context.Background(), gof.File)
+	gof.scopeIsParse = nil
 	return &gof, nil
 }
 
@@ -53,12 +138,20 @@ func (g *GoFile) parse(ctx context.Context, file *ast.File) {
 	})
 }
 
-func (g *GoFile) parseHandle(ctx context.Context, n ast.Node) {
-	println("parseHandle")
-	if n == nil {
+func (g *GoFile) parseHandle(ctx context.Context, node ast.Node) {
+	log.Info().Msg("parseHandle")
+	if node == nil {
 		return
 	}
-	ast.Inspect(n, func(n ast.Node) bool {
+
+	ast.Inspect(node, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		if g.InParse(n.Pos(), n.End()) {
+			return true
+		}
+
 		switch x := n.(type) {
 		case *ast.FuncDecl:
 			g.funcDeclHandle(ctx, x)
@@ -68,15 +161,49 @@ func (g *GoFile) parseHandle(ctx context.Context, n ast.Node) {
 			g.assignDeclStmtHandle(ctx, x)
 		case *ast.TypeSpec:
 			g.typeDeclHandle(ctx, x)
+		case *ast.FuncLit:
+			g.funcLitHandle(ctx, x)
+		case *ast.BlockStmt:
+			g.blockDeclHandle(ctx, x)
+		default:
+			return true
 		}
 		return true
 	})
 }
 
+func (g *GoFile) InParse(start, end token.Pos) bool {
+	_, ok := g.scopeIsParse[Scope{Start: start, End: end}]
+	return ok
+}
+
+func (g *GoFile) registerParse(start, end token.Pos) {
+	g.scopeIsParse[Scope{Start: start, End: end}] = struct{}{}
+}
+
+func (g *GoFile) funcLitHandle(ctx context.Context, n *ast.FuncLit) {
+	g.registerParse(n.Pos(), n.End())
+	g.SetScopeDest(ctx, n.Pos(), n.End())
+	log.Info().Msg("funcLitHandle")
+	ctx = withBlockName(ctx, BlockSpecTypeLambda.String())
+	g.parseHandle(ctx, n.Body)
+}
+
+func (g *GoFile) blockDeclHandle(ctx context.Context, block *ast.BlockStmt) {
+	g.registerParse(block.Pos(), block.End())
+	g.SetScopeDest(ctx, block.Pos(), block.End())
+	log.Info().Msg("blockDeclHandle")
+	ctx = withBlockName(ctx, BlockSpecTypeBlock.String())
+	for _, stmt := range block.List {
+		g.parseHandle(ctx, stmt)
+	}
+}
+
 func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
-	println("typeDeclHandle")
+	log.Info().Msg("typeDeclHandle")
 	fields := []TypeInfoSpec{}
 	if structType, ok := x.Type.(*ast.StructType); ok {
+		ctx = withBlockName(ctx, x.Name.Name)
 		for _, field := range structType.Fields.List {
 			for _, ident := range field.Names {
 				fieldInfo := TypeInfoSpec{
@@ -89,6 +216,8 @@ func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
 		}
 	}
 
+	g.registerParse(x.Pos(), x.End())
+	g.SetScopeDest(ctx, x.Pos(), x.End())
 	g.withTypeInfo(ctx, TypeSpec{
 		Name:    x.Name.Name,
 		Fields:  fields,
@@ -98,36 +227,35 @@ func (g *GoFile) typeDeclHandle(ctx context.Context, x *ast.TypeSpec) {
 	})
 }
 
+func (g *GoFile) parseFieldList(ctx context.Context, fields *ast.FieldList) []TypeInfoSpec {
+	var fieldlist []TypeInfoSpec
+	for _, param := range fields.List {
+		for _, ident := range param.Names {
+			fieldlist = append(fieldlist, TypeInfoSpec{
+				Name:    &ident.Name,
+				Scope:   Scope{ident.Pos(), ident.End()},
+				Type:    ident.Obj.Kind.String(),
+				Comment: "",
+			})
+		}
+	}
+	return fieldlist
+}
+
 func (g *GoFile) funcDeclHandle(ctx context.Context, n *ast.FuncDecl) {
-	println("funcDeclHandle", n.Name.Name)
-	ctx = context.WithValue(ctx, BlockName, n.Name.Name)
+	g.registerParse(n.Pos(), n.End())
+	g.SetScopeDest(ctx, n.Pos(), n.End())
+	log.Info().Msg(fmt.Sprintf("funcDeclHandle: %v", n.Name.Name))
+	ctx = withBlockName(ctx, n.Name.Name)
 	params := []TypeInfoSpec{}
 	returns := []TypeInfoSpec{}
 
 	if n.Type.Params != nil {
-		for _, param := range n.Type.Params.List {
-			for _, ident := range param.Names {
-				params = append(params, TypeInfoSpec{
-					Name:    &ident.Name,
-					Scope:   Scope{ident.Pos(), ident.End()},
-					Type:    ident.Obj.Kind.String(),
-					Comment: "",
-				})
-			}
-		}
+		params = g.parseFieldList(ctx, n.Type.Params)
 	}
 
 	if n.Type.Results != nil {
-		for _, parm := range n.Type.Results.List {
-			for _, ident := range parm.Names {
-				returns = append(returns, TypeInfoSpec{
-					Name:    &ident.Name,
-					Scope:   Scope{ident.Pos(), ident.End()},
-					Type:    getTypeString(ident),
-					Comment: "",
-				})
-			}
-		}
+		returns = g.parseFieldList(ctx, n.Type.Results)
 	}
 	g.withFunction(ctx, FuncSpec{
 		Name:    n.Name.Name,
@@ -141,7 +269,9 @@ func (g *GoFile) funcDeclHandle(ctx context.Context, n *ast.FuncDecl) {
 }
 
 func (g *GoFile) assignDeclStmtHandle(ctx context.Context, stmt *ast.AssignStmt) {
-	println("assignDeclStmtHandle")
+	g.registerParse(stmt.Pos(), stmt.End())
+	g.SetScopeDest(ctx, stmt.Pos(), stmt.End())
+	log.Info().Msg("assignDeclStmtHandle")
 	if stmt.Tok != token.DEFINE {
 		return
 	}
@@ -161,7 +291,9 @@ func (g *GoFile) assignDeclStmtHandle(ctx context.Context, stmt *ast.AssignStmt)
 }
 
 func (g *GoFile) genDeclHandle(ctx context.Context, x *ast.GenDecl) {
-	println("genDeclHandle")
+	g.registerParse(x.Pos(), x.End())
+	g.SetScopeDest(ctx, x.Pos(), x.End())
+	log.Info().Msg("genDeclHandle")
 	if x.Tok == token.VAR || x.Tok == token.CONST {
 		for _, spec := range x.Specs {
 			if vspec, ok := spec.(*ast.ValueSpec); ok {
@@ -199,7 +331,7 @@ func (g *GoFile) genDeclHandle(ctx context.Context, x *ast.GenDecl) {
 	}
 }
 
-// from: fileName dest: global|funcName name: keyword
+// from: fileName dest: global|funcName|block name: keyword
 func (g *GoFile) withVariable(ctx context.Context, n TypeInfoSpec) {
 	blackName := getBlockName(ctx)
 	if _, ok := g.Variables[blackName]; !ok {
@@ -212,10 +344,16 @@ func (g *GoFile) withVariable(ctx context.Context, n TypeInfoSpec) {
 const BlockName = "block-name"
 
 func getBlockName(ctx context.Context) string {
-	if v, ok := ctx.Value(BlockName).(string); ok {
-		return v
+	if v := ctx.Value(BlockName); v != nil {
+		return v.(string)
 	}
 	return "global"
+}
+
+const blockNameJoinSep = "/"
+
+func withBlockName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, BlockName, getBlockName(ctx)+blockNameJoinSep+name)
 }
 
 // dest: global|funcName name: keyword
