@@ -45,14 +45,15 @@ func FindPackage(find PackageFindParams) ([]*model.Package, error) {
 }
 
 func GetPackage(packageName string, version string) (*model.Package, error) {
-	db := DB.Table(model.PackageTableName)
-	db = db.Where("package_name=? and version=?", packageName, version)
-	var p model.Package
-	err := db.First(&p).Error
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
+	//db := DB.Table(model.PackageTableName)
+	//db = db.Where("package_name=? and version=?", packageName, version)
+	//var p model.Package
+	//err := db.First(&p).Error
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return &p, nil
+	return &model.Package{}, nil
 }
 
 func FindPackageLibrany(packageId int64) ([]*model.PackageLibrany, error) {

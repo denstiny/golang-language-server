@@ -19,7 +19,7 @@ func init() {
 		PrepareStmt:            true,
 	})
 	if err != nil {
-		panic(err)
+		panic("failed to connect database")
 	}
 	DB = db
 }
