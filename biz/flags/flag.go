@@ -24,6 +24,13 @@ func init() {
 	flag.IntVar(&SERVICE_PROT, "port", 9999, "端口")
 	flag.Usage = Help
 	flag.Parse()
+
+	if _, err := os.Stat(SERVICE_CONFIG_DIR); os.IsNotExist(err) {
+		err = os.Mkdir(SERVICE_CONFIG_DIR, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func Help() {

@@ -42,7 +42,7 @@ func (c *LspService) StdioStart(ctx context.Context) {
 
 func (c *LspService) TcpStart(ctx context.Context) {
 	h := jsonrpc2.HandlerWithError(func(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
-		log.Info().Msg("rpc msg:" + req.Method)
+		log.Info().Msg("handle msg:" + req.Method)
 		ctx = c.registerContext(ctx)
 		ctx = context.WithValue(ctx, rpc_conn, conn)
 		result, err := c.Handle(ctx, conn, req)

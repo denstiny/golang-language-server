@@ -32,12 +32,45 @@ func (g *GoFile) GetByteByPosition(position Position) (byte, error) {
 	return byte(0), fmt.Errorf("no byte found for position %v", position)
 }
 
+func (g *GoFile) GetCursorNode(pos Position) ast.Node {
+	var respNode ast.Node
+	ast.Inspect(g, func(n ast.Node) bool {
+		startLine := g.Position(n.Pos())
+		endLine := g.Position(n.End())
+		// 说明还没找到
+		if pos.Line < startLine.Line {
+			return true
+		}
+
+		// 说明已经越过了最可能的的节点了
+		if pos.Line > endLine.Line {
+			return false
+		}
+		respNode = n
+		return true
+	})
+	return respNode
+}
+
 func (g *GoFile) SetScopeDest(ctx context.Context, start, end token.Pos) {
 	startLine := g.Position(start).Line
 	endLine := g.Position(end).Line
-	for i := startLine - 1; i <= endLine; i++ {
+	for i := startLine - 1; i < endLine; i++ {
 		g.BlockType[i] = getBlockName(ctx)
 	}
+}
+
+// 获取当前光标前的单词
+func (g *GoFile) GetCursorWord(pos Position) string {
+	var word []byte
+	for ; pos.Column >= 0; pos.Column-- {
+		b := g.buffer[pos]
+		if b == ' ' {
+			return string(word)
+		}
+		word = append(word, b)
+	}
+	return string(word)
 }
 
 // 返回当前块节点的名字

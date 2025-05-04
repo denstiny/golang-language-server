@@ -24,4 +24,4 @@ var ServerCapabilities = lsp.ServerCapabilities{
 	},
 }
 
-const CacheFileName = "go_lsp_cahce"
+const CacheFileName = "go_lsp_cahce.db"

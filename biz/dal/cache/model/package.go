@@ -7,6 +7,7 @@ import (
 
 const PackageTableName = "packages"
 const IndexTableName = "indexes"
+const PackageLibranyTablName = "packages_librany"
 
 /*
 Package 结构体用于表示一个软件包的相关信息，这些信息会被存储到数据库中，并且能够以 JSON 格式进行输出。
@@ -20,10 +21,18 @@ Package 结构体用于表示一个软件包的相关信息，这些信息会被
     数据库类型为 varchar(1024)，并创建了名为 idx_version 的索引，有助于提高基于版本号的查询效率。
 */
 type Package struct {
-	ID      int64  `db:"id" json:"id" gorm:"primary_key"`
-	Name    string `db:"name" json:"name" gorm:"type:varchar(1024)index:idx_name"`
-	Repo    string `db:"repo" json:"repo" gorm:"type:varchar(1024)index:idx_repo"`
-	Version string `db:"version" json:"version" gorm:"type:varchar(1024)index:idx_version"`
+	ID          int64  `db:"id" json:"id" gorm:"primary_key"`
+	Name        string `db:"name" json:"name" gorm:"not null;type:varchar(1024)index:idx_name"`
+	PackageName string `db:"package_name" json:"package_name" gorm:"type:varchar(64)"`
+	Version     string `db:"version" json:"version" gorm:"type:varchar(1024)"`
+}
+
+// 存储包的依赖关系
+type PackageLibrany struct {
+	ID          int64   `db:"id" json:"id" gorm:"primary_key"`
+	ParentID    int64   `db:"parent_id" json:"parent_id" gorm:"not null;index:idx_parent_id"`
+	PackageName string  `db:"package_name" json:"package_name" gorm:"type:varchar(64)"`
+	Version     *string `db:"version" json:"version" gorm:"type:varchar(64)"`
 }
 
 /*

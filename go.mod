@@ -1,10 +1,11 @@
 module github.com/denstiny/golang-language-server
 
-go 1.21.9
+go 1.22
 
 require (
 	github.com/rs/zerolog v1.34.0
 	github.com/sourcegraph/jsonrpc2 v0.2.0
+	golang.org/x/mod v0.17.0
 	gorm.io/driver/sqlite v1.5.7
 	gorm.io/gorm v1.26.0
 	pkg.nimblebun.works/go-lsp v1.1.0
