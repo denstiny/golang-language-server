@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strings"
 	"time"
 )
 
@@ -22,8 +21,8 @@ Package 结构体用于表示一个软件包的相关信息，这些信息会被
 */
 type Package struct {
 	ID          int64  `db:"id" json:"id" gorm:"primary_key"`
-	Name        string `db:"name" json:"name" gorm:"not null;type:varchar(1024)index:idx_name"`
-	PackageName string `db:"package_name" json:"package_name" gorm:"type:varchar(64)"`
+	Name        string `db:"name" json:"name" gorm:"not null;type:varchar(1024);index:idx_name"`
+	PackagePath string `db:"package_path" json:"package_path" gorm:"type:varchar(64)"`
 	Version     string `db:"version" json:"version" gorm:"type:varchar(1024)"`
 }
 
@@ -31,7 +30,7 @@ type Package struct {
 type PackageLibrany struct {
 	ID          int64   `db:"id" json:"id" gorm:"primary_key"`
 	ParentID    int64   `db:"parent_id" json:"parent_id" gorm:"not null;index:idx_parent_id"`
-	PackageName string  `db:"package_name" json:"package_name" gorm:"type:varchar(64)"`
+	PackagePath string  `db:"package_path" json:"package_path" gorm:"type:varchar(64)"`
 	Version     *string `db:"version" json:"version" gorm:"type:varchar(64)"`
 }
 
@@ -50,18 +49,14 @@ Index 结构体代表了索引的相关信息，它会存储在数据库里，�
 type Index struct {
 	ID         int       `db:"id" json:"id" gorm:"primary_key"`
 	Comparable string    `db:"comparable" json:"comparable" gorm:"type:text"`
-	KeyWorld   string    `db:"key_world" json:"key_world" gorm:"type:varchar(1024)index:idx_key_world"`
-	Type       int32     `db:"type" json:"type" gorm:"type:int:index:idx_type"`
+	KeyWorld   string    `db:"key_world" json:"key_world" gorm:"type:varchar(1024);index:idx_key_world"`
+	Type       int32     `db:"type" json:"type" gorm:"type:int;index:idx_type"`
 	JoinIndex  string    `db:"join_index" json:"join_index"`
-	FilePath   string    `db:"file_path" json:"file_path" gorm:"type:varchar(2048)index:idx_file_path"`
-	Package    string    `db:"package" json:"package" gorm:"type:varchar(1024)index:idx_package"`
+	FilePath   string    `db:"file_path" json:"file_path" gorm:"type:varchar(2048);index:idx_file_path"`
+	Package    string    `db:"package" json:"package" gorm:"type:varchar(1024);index:idx_package"`
 	JoinLine   int       `db:"join_line" json:"join_line" gorm:"type:int"`
 	JoinCol    int       `db:"join_col" json:"join_col" gorm:"type:"`
-	PackageID  int32     `db:"package_id" json:"package_id" gorm:"type:int index:idx_package_id"`
+	PackageID  int32     `db:"package_id" json:"package_id" gorm:"type:int;index:idx_package_id"`
 	Extra      string    `db:"extra" json:"extra" gorm:"type:text"`
 	UpdateTime time.Time `db:"update_time" json:"update_time" gorm:"type:datetime"`
-}
-
-func (p *Package) IndexName() string {
-	return strings.Join([]string{p.Name, p.Version}, "@")
 }

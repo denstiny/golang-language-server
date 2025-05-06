@@ -1,7 +1,7 @@
-package cache
+package sqlite
 
 import (
-	"github.com/denstiny/golang-language-server/biz/dal/cache/model"
+	"github.com/denstiny/golang-language-server/biz/dal/sqlite/model"
 )
 
 func QueryIndexByPackageID(PackageID int) ([]*model.Index, error) {

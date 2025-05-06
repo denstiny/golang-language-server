@@ -1,4 +1,4 @@
-package cache
+package sqlite
 
 import (
 	"gorm.io/driver/sqlite"
@@ -6,8 +6,8 @@ import (
 )
 
 func TestCache(t *testing.T) {
-	db := sqlite.Open("/Users/bytedance/.cache/golang-language-server/" + "go_lsp_cahce.db")
-	//db, err := gorm.Open(sqlite.Open("/Users/bytedance/.cache/golang-language-server/"+conts.CacheFileName), &gorm.Config{
+	db := sqlite.Open("/Users/bytedance/.sqlite/golang-language-server/" + "go_lsp_cahce.db")
+	//db, err := gorm.Open(sqlite.Open("/Users/bytedance/.sqlite/golang-language-server/"+conts.CacheFileName), &gorm.Config{
 	//	SkipDefaultTransaction: false,
 	//	PrepareStmt:            true,
 	//})

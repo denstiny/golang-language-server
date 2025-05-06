@@ -9,7 +9,7 @@ import (
 
 // service config
 var (
-	SERVICE_CONFIG_DIR string // default: home/.cache/golang-language-server
+	SERVICE_CONFIG_DIR string // default: home/.sqlite/golang-language-server
 	SERVICE_DEBUG      bool
 	SERVICE_STDIO      bool
 	SERVICE_TCP        bool
