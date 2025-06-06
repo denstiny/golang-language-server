@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/denstiny/golang-language-server/biz/dal/cache"
+	"github.com/denstiny/golang-language-server/biz/dal/sqlite"
 	"github.com/denstiny/golang-language-server/pkg/file"
 	"github.com/rs/zerolog/log"
 	"go/ast"
@@ -14,6 +15,7 @@ import (
 
 func Handle(ctx context.Context, params *lsp.CompletionParams) (interface{}, error) {
 	fileUrl := string(params.TextDocumentPositionParams.TextDocument.URI)
+
 	filepath := strings.Trim(fileUrl, "file://")
 	var completionItem []lsp.CompletionItem
 	v, ok := cache.OpenedFile.Load(filepath)
@@ -21,7 +23,16 @@ func Handle(ctx context.Context, params *lsp.CompletionParams) (interface{}, err
 		gf := v.(*file.GoFile)
 		word := gf.GetCursorWord(file.Position{Line: params.Position.Line, Column: params.Position.Character - 1})
 		keys := strings.Split(word, ".")
+		log.Info().Str("word", word).Msg("Found word")
 		if len(keys) > 1 {
+			// 查找正在使用的包
+			rootPacakgeSpec := keys[0]
+			pkg, err := gf.FindPackage(rootPacakgeSpec)
+			if err != nil {
+				return nil, err
+			}
+			sqlite.GetPackage(sqlite.PackageFindParams{PackagePath: &pkg.Path, Name: &pkg.Name})
+
 		} else {
 			log.Info().Msg(fmt.Sprintf("word(%v:%v): %v", params.Position.Line, params.Position.Character-1, word))
 			completionItem = append(completionItem, func(gf *file.GoFile) []lsp.CompletionItem {

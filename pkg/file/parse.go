@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -492,4 +493,15 @@ func getLastFolder(path string) string {
 	dir := filepath.Dir(path)
 	// 获取目录部分的最后一个元素
 	return filepath.Base(dir)
+}
+
+func (p *GoFile) FindPackage(packageName string) (ImportSpec, error) {
+	for _, pkgs := range p.Imports {
+		for _, pkg := range pkgs {
+			if pkg.Name == packageName {
+				return pkg, nil
+			}
+		}
+	}
+	return ImportSpec{}, errors.New("package not found")
 }

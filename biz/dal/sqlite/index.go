@@ -22,7 +22,7 @@ func QueryIndexByPackageID(PackageID int) ([]*model.Index, error) {
 type IndexFindParams struct {
 	Keyword   *string
 	Filename  *string
-	PackageID *int32
+	PackageID *int64
 	Type      *int32
 }
 
